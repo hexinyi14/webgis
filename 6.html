@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WebGIS 应用 - 实验六 (无需申请版)</title>
+    
+    <!-- ArcGIS JS API 样式 -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 12px;
+        }
+
+        /* ========== 1. 页眉区域 ========== */
+        #app-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        #app-header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+
+        #app-header p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+/* ========== 2. 地图区域 ========== */
+        #map-container {
+            flex: 1;
+            position: relative;
+            background: #e8edf2;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            min-height: 0;
+        }
+
+        #viewDiv {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 微件面板 - 毛玻璃效果 */
+        #widgets-container {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+            padding: 12px;
+            width: 280px;
+            max-height: calc(100% - 32px);
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            z-index: 20;
+        }
+
+        #layerListWidget, #legendWidget {
+            width: 100%;
+        }
+
+        #layerListWidget {
+            margin-bottom: 16px;
+        }
+
+        /* ========== 3. 底图库区域 ========== */
+        #basemap-footer {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        #basemap-footer h3 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #basemap-footer h3::before {
+            content: "🗺️";
+            font-size: 1.4rem;
+        }
+
+        /* 美化 ArcGIS 自带微件 */
+        .esri-widget {
+            background: transparent !important;
+        }
+
+        .esri-layer-list, .esri-legend {
+            background: transparent !important;
+        }
+
+        .esri-layer-list__item-title,
+        .esri-legend__service-title {
+            font-weight: 500 !important;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body { padding: 8px; gap: 8px; }
+            #app-header { padding: 12px 16px; }
+            #app-header h1 { font-size: 1.4rem; }
+            #widgets-container { width: 240px; }
+            #basemap-footer { padding: 12px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 1️⃣ 页眉区域 -->
+    <header id="app-header">
+        <h1>🌐 美国县域可视化</h1>
+        <p>📌 底图：OpenStreetMap | 专题图层：美国县界 (USGS)</p>
+    </header>
+
+    <!-- 2️⃣ 地图区域 -->
+    <main id="map-container">
+        <div id="viewDiv"></div>
+        
+        <!-- 左侧微件面板 -->
+        <div id="widgets-container">
+            <div id="layerListWidget"></div>
+            <div id="legendWidget"></div>
+        </div>
+    </main>
+
+    <!-- 3️⃣ 底图库区域 -->
+    <footer id="basemap-footer">
+        <h3>底图库 - 点击切换</h3>
+        <div id="basemapGalleryDiv"></div>
+    </footer>
+
+    <!-- ArcGIS JS API -->
+    <script src="https://js.arcgis.com/4.32/"></script>
+    
+    <script>
+        require([
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/widgets/ScaleBar",
+            "esri/widgets/Legend",
+            "esri/widgets/Search",
+            "esri/widgets/LayerList",
+            "esri/widgets/BasemapGallery",
+            "esri/widgets/Home"
+        ], function(
+            Map, MapView, FeatureLayer,
+            ScaleBar, Legend, Search, LayerList, BasemapGallery, Home
+        ) {
+            
+         // ==================== 核心：无需申请的稳定数据 ====================
+            
+            // 专题图层：USGS 美国县界数据 (.gov 域名，国内稳定访问)
+            const countiesLayer = new FeatureLayer({
+                url: "https://cartowfs.nationalmap.gov/arcgis/rest/services/govunits/MapServer/1",
+                title: "🇺🇸 美国县级行政区划",
+                opacity: 0.7,
+                // 美观的配色方案
+                renderer: {
+                    type: "simple",
+                    symbol: {
+                        type: "simple-fill",
+                        color: [64, 158, 255, 0.35],  // 优雅的半透明蓝色
+                        outline: {
+                            color: [255, 255, 255, 0.9],
+                            width: 1.2
+                        }
+                    }
+                },
+                // 点击弹窗信息
+                popupTemplate: {
+                    title: "📌 {NAME}",
+                    content: [
+                        {
+                            type: "fields",
+                            fieldInfos: [
+                                { fieldName: "STNAME", label: "所属州" },
+                                { fieldName: "FIPS", label: "FIPS 代码" },
+                                { fieldName: "SQMI", label: "面积 (平方英里)", format: { digitSeparator: true, places: 0 } }
+                            ]
+                        }
+                    ]
+                }
+            });
+
+               // 地图：使用 OSM 底图（无需申请，国内可用）
+            const map = new Map({
+                basemap: "osm",  // OpenStreetMap，全球通用，无需 Key
+                layers: [countiesLayer],
+                ground: "world-elevation"
+            });
+
+            // 视图
+            const view = new MapView({
+                container: "viewDiv",
+                map: map,
+                center: [-98.5, 39.5],   // 美国本土中心
+                zoom: 4,
+                // 为左侧面板留出空间
+                padding: {
+                    left: 310,
+                    top: 20,
+                    right: 20,
+                    bottom: 20
+                },
+                // 弹窗设置
+                popup: {
+                    dockEnabled: true,
+                    dockOptions: {
+                        position: "bottom-right",
+                        breakpoint: false
+                    },
+                    defaultPopupTemplateEnabled: true
+                },
+                // 添加一些 UI 组件
+                ui: {
+                    components: ["zoom", "compass"]
+                }
+            });
+
+            // 视图加载完成后添加所有微件
+            view.when(function() {
+                
+                // ========== 1. 比例尺 ==========
+                const scaleBar = new ScaleBar({
+                    view: view,
+                    unit: "dual",  // 公制 + 英制
+                    style: "ruler"
+                });
+                view.ui.add(scaleBar, "bottom-left");
+
+                // ========== 2. 图例 ==========
+                const legend = new Legend({
+                    view: view,
+                    container: "legendWidget",
+                    layerInfos: [{
+                        layer: countiesLayer,
+                        title: "美国县界图例"
+                    }]
+                });
+
+                // ========== 3. 搜索框 ==========
+                const searchWidget = new Search({
+                    view: view,
+                    container: document.createElement("div"),
+                    // 配置搜索源
+                    sources: [{
+                        layer: countiesLayer,
+                        searchFields: ["NAME", "STNAME"],
+                        displayField: "NAME",
+                        exactMatch: false,
+                        outFields: ["NAME", "STNAME", "FIPS", "SQMI"],
+                        name: "搜索美国县名",
+                        placeholder: "🔍 输入县名，如：Los Angeles",
+                        suggestionTemplate: "{NAME} ({STNAME})",
+                        maxResults: 6,
+                        maxSuggestions: 6
+                    }],
+                    includeDefaultSources: false,  // 只搜索我们的专题图层
+                    locationEnabled: false
+                });
+                view.ui.add(searchWidget, "top-right");
+
+                // ========== 4. 图层列表 ==========
+                const layerList = new LayerList({
+                    view: view,
+                    container: "layerListWidget",
+                    listItemCreatedFunction: function(event) {
+                        const item = event.item;
+                        if (item.layer === countiesLayer) {
+                            item.title = "🗺️ 美国县界 (专题图层)";
+                            item.open = true;
+                        }
+                        // 隐藏底图层的操作按钮，保持界面简洁
+                        if (item.layer.type === "vector-tile" || item.layer.type === "tile") {
+                            item.panel = { content: "legend" };
+                        }
+                    }
+                });
+
+                // ========== 5. 底图库 ==========
+                const basemapGallery = new BasemapGallery({
+                    view: view,
+                    container: "basemapGalleryDiv"
+                });
+
+                // ========== 6. 主页按钮 (额外加分项) ==========
+                const homeWidget = new Home({
+                    view: view
+                });
+                view.ui.add(homeWidget, "top-left");
+
+                // ========== 添加一些提示信息 ==========
+                console.log("✅ 实验六 WebGIS 应用加载成功！");
+                console.log("📊 数据源：USGS 美国县界 + OpenStreetMap 底图 (均无需申请)");
+                console.log("🎯 所有微件：比例尺 ✓ | 图例 ✓ | 搜索框 ✓ | 图层列表 ✓ | 底图库 ✓");
+            });
+
+            // 错误处理
+            view.catch(function(error) {
+                console.error("❌ 地图加载失败:", error);
+                const errorDiv = document.createElement("div");
+                errorDiv.style.cssText = "position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 24px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); text-align: center; z-index: 100;";
+                errorDiv.innerHTML = `
+                    <h3 style="color: #e74c3c; margin-bottom: 12px;">⚠️ 地图加载失败</h3>
+                    <p style="color: #666;">请检查网络连接后刷新页面重试。</p>
+                    <p style="color: #999; font-size: 0.85rem; margin-top: 12px;">错误信息：${error.message}</p>
+                    <button onclick="location.reload()" style="margin-top: 16px; padding: 8px 24px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">🔄 刷新页面</button>
+                `;
+                document.getElementById("map-container").appendChild(errorDiv);
+            });
+        });
+    </script>
+</body>
+</html>
+        
