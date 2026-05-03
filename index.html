@@ -3,94 +3,577 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>福州“消失的老码头”时空故事地图</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <title>余村·绿水青山就是金山银山 | 地图故事</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+    <!-- GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:"Microsoft Yahei",sans-serif;background:#f5f0e6;}
-        .header{height:65px;background:#6d4c41;color:#fff;line-height:65px;text-align:center;font-size:24px;font-weight:bold;}
-        .container{display:flex;height:calc(100vh - 65px);}
-        .story-panel{width:30%;background:#fffaf0;padding:28px;overflow-y:auto;border-right:2px solid #d7ccc8;}
-        .story-title{font-size:20px;color:#5d4037;margin-bottom:18px;font-weight:bold;border-left:4px solid #8d6e63;padding-left:10px;}
-        .story-text{font-size:16px;color:#3e2723;line-height:1.9;margin-bottom:22px;}
-        .story-img{width:100%;border-radius:8px;margin-bottom:22px;box-shadow:0 3px 6px rgba(0,0,0,0.1);}
-        #map{width:70%;height:100%;}
-        .btn-group{display:flex;justify-content:space-between;margin-top:25px;gap:10px;}
-        .btn{flex:1;padding:12px 0;border:none;border-radius:6px;background:#8d6e63;color:#fff;cursor:pointer;font-size:15px;font-weight:bold;}
-        .btn:hover{background:#5d4037;}
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            height: 100vh; width: 100vw;
+            background: #0a0a0f;
+        }
+
+        #map { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
+
+        #story-panel {
+            position: fixed;
+            left: 32px; top: 50%; transform: translateY(-50%);
+            width: 460px; max-height: 85vh;
+            background: rgba(10, 11, 18, 0.82);
+            backdrop-filter: blur(36px) saturate(140%);
+            -webkit-backdrop-filter: blur(36px) saturate(140%);
+            border-radius: 36px;
+            border: 1px solid rgba(180, 150, 80, 0.3);
+            box-shadow: 0 70px 120px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,240,0.1), inset 0 -2px 0 rgba(0,0,0,0.4);
+            z-index: 1000;
+            color: #f0ead6;
+            padding: 38px 32px 28px;
+            overflow-y: auto;
+            transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        #story-panel::before {
+            content: ''; position: absolute; top:0; left:24px; right:24px;
+            height:1px; background: linear-gradient(90deg, transparent, rgba(218, 185, 70, 0.7), transparent);
+        }
+        #story-panel::after {
+            content: ''; position: absolute; bottom:0; left:24px; right:24px;
+            height:1px; background: linear-gradient(90deg, transparent, rgba(218, 185, 70, 0.35), transparent);
+        }
+        #story-panel::-webkit-scrollbar { width:5px; }
+        #story-panel::-webkit-scrollbar-track { background:transparent; }
+        #story-panel::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:6px; }
+
+        .chapter-badge {
+            display: inline-block; font-size:12px; letter-spacing:6px; font-weight:500;
+            color:#dab946; background:rgba(218,185,70,0.12); padding:6px 18px;
+            border-radius:30px; margin-bottom:18px; border:1px solid rgba(218,185,70,0.5);
+            text-transform:uppercase; backdrop-filter:blur(4px);
+        }
+        .story-title {
+            font-family:'Noto Serif SC','STSong','KaiTi',serif;
+            font-size:36px; font-weight:900; color:#fff; line-height:1.3;
+            margin-bottom:10px; letter-spacing:2.5px; text-shadow:0 4px 18px rgba(0,0,0,0.8);
+        }
+        .story-subtitle {
+            font-size:14px; color:#b8a06e; margin-bottom:24px;
+            display:flex; align-items:center; gap:10px; font-weight:400;
+            letter-spacing:1px; border-left:4px solid #dab946; padding-left:14px;
+        }
+        .story-text {
+            font-size:15px; line-height:2; color:#ded8c8;
+            margin-bottom:24px; font-weight:300; text-shadow:0 2px 10px rgba(0,0,0,0.6);
+            letter-spacing:0.5px;
+        }
+        .highlight { color:#f5d65e; font-weight:700; }
+        .clue-badge {
+            background:rgba(200,60,60,0.15); border-left:3px solid #e74c3c;
+            padding:10px 16px; margin:12px 0; border-radius:8px;
+            font-style:italic; color:#f5b7b1; font-size:14px;
+        }
+
+        .data-cards { display:flex; gap:14px; margin-bottom:24px; }
+        .data-card {
+            flex:1; background:rgba(255,255,255,0.06); border-radius:20px;
+            padding:20px 10px; text-align:center; border:1px solid rgba(255,255,255,0.12);
+            backdrop-filter:blur(14px); box-shadow:0 12px 28px rgba(0,0,0,0.6);
+            transition:transform 0.2s;
+        }
+        .data-card:hover { transform:translateY(-3px); }
+        .data-card .value {
+            font-size:30px; font-weight:700; color:#f5d65e;
+            font-family:'Noto Serif SC',serif; margin-bottom:6px;
+        }
+        .data-card .label { font-size:11px; color:#b0b0b0; letter-spacing:1px; }
+
+        .story-image {
+            width:100%; border-radius:22px; margin-bottom:24px;
+            border:1px solid rgba(255,255,255,0.1); box-shadow:0 28px 48px rgba(0,0,0,0.8);
+            transition:transform 0.3s;
+        }
+        .story-image:hover { transform:scale(1.02); }
+
+        .chart-box {
+            margin:20px 0 10px; background:rgba(0,0,0,0.35); border-radius:20px;
+            padding:16px; height:220px; border:1px solid rgba(255,255,255,0.1);
+            backdrop-filter:blur(8px);
+        }
+
+        .time-slider-container { margin:20px 0 14px; }
+        .time-slider-label { color:#aaa; font-size:11px; display:flex; justify-content:space-between; margin-bottom:8px; letter-spacing:1px; }
+        #timeSlider { width:100%; accent-color:#dab946; height:5px; border-radius:5px; background:rgba(255,255,255,0.1); }
+
+        .nav-row { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
+        .nav-btn {
+            background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2);
+            color:#ddd; padding:10px 28px; border-radius:50px; cursor:pointer;
+            font-size:13px; transition:all 0.3s; display:flex; align-items:center; gap:8px;
+            backdrop-filter:blur(10px); letter-spacing:1px;
+        }
+        .nav-btn:hover { background:rgba(218,185,70,0.25); border-color:#dab946; color:#fff; }
+        .nav-btn:disabled { opacity:0.3; pointer-events:none; }
+        .page-indicator { color:#aaa; font-size:13px; letter-spacing:3px; font-weight:500; }
+
+        .progress-dots { display:flex; gap:12px; justify-content:center; margin:20px 0 14px; }
+        .progress-dot {
+            width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.2);
+            cursor:pointer; transition:all 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        .progress-dot.active { background:#dab946; box-shadow:0 0 26px #dab946; width:30px; border-radius:14px; }
+
+        .control-top { position:fixed; right:24px; top:24px; z-index:1100; display:flex; flex-direction:column; gap:10px; }
+        .ctrl-btn {
+            width:46px; height:46px; background:rgba(18,18,24,0.85); backdrop-filter:blur(22px);
+            border:1px solid rgba(255,255,255,0.12); border-radius:14px; color:#ccc;
+            display:flex; align-items:center; justify-content:center; cursor:pointer;
+            font-size:18px; transition:all 0.3s; box-shadow:0 8px 20px rgba(0,0,0,0.5);
+        }
+        .ctrl-btn:hover { background:rgba(218,185,70,0.35); border-color:#dab946; color:#fff; }
+        .ctrl-btn.active { background:#dab946; color:#0a0a0f; border-color:#dab946; box-shadow:0 0 20px #dab946; }
+
+        .legend-panel {
+            position:fixed; right:24px; bottom:32px; z-index:1100;
+            background:rgba(18,18,24,0.8); backdrop-filter:blur(24px);
+            border-radius:18px; padding:14px 22px; border:1px solid rgba(255,255,255,0.12);
+            color:#ccc; font-size:12px; box-shadow:0 12px 30px rgba(0,0,0,0.6);
+        }
+        .legend-item { display:flex; align-items:center; gap:8px; margin:5px 0; }
+        .legend-color { width:14px; height:14px; border-radius:4px; }
+
+        #basemap-panel {
+            position:fixed; right:24px; top:140px; z-index:1100;
+            background:rgba(18,18,24,0.8); backdrop-filter:blur(24px);
+            border-radius:18px; padding:16px 20px; border:1px solid rgba(255,255,255,0.12);
+            color:#ccc; font-size:12px; box-shadow:0 12px 30px rgba(0,0,0,0.6);
+            width:180px;
+        }
+        #basemap-panel h4 { margin:0 0 10px; color:#dab946; font-size:14px; }
+        .basemap-toggle { display:flex; align-items:center; gap:8px; margin:8px 0; cursor:pointer; }
+        .basemap-toggle input { accent-color:#dab946; }
+
+        #particle-canvas { position:fixed; pointer-events:none; z-index:999; top:0; left:0; width:100%; height:100%; }
+
+        .hide-panel #story-panel { opacity:0; pointer-events:none; transform:translateY(-50%) scale(0.92); }
+
+        .choice-modal {
+            display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+            background:rgba(12,12,20,0.95); backdrop-filter:blur(24px);
+            border-radius:28px; padding:32px; border:2px solid #dab946;
+            box-shadow:0 0 60px rgba(218,185,70,0.5); z-index:3000;
+            text-align:center; color:#fff; width:420px;
+        }
+        .choice-modal h3 { font-family:'Noto Serif SC',serif; font-size:22px; margin-bottom:20px; color:#f5d65e; }
+        .choice-btn {
+            display:block; width:100%; margin:10px 0; padding:14px;
+            background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.2);
+            border-radius:20px; color:#fff; font-size:14px; cursor:pointer; transition:all 0.3s;
+        }
+        .choice-btn:hover { background:rgba(218,185,70,0.2); border-color:#dab946; }
+
+        @media (max-width:768px) {
+            #story-panel { left:10px; right:10px; width:auto; top:auto; bottom:16px; transform:none; max-height:48vh; border-radius:28px 28px 12px 12px; }
+            .story-title { font-size:28px; }
+            .control-top { right:12px; top:12px; gap:8px; }
+            .ctrl-btn { width:40px; height:40px; font-size:16px; }
+            #basemap-panel { top:100px; right:10px; width:160px; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">福州“消失的老码头”时空故事地图</div>
-    <div class="container">
-        <div class="story-panel">
-            <h2 class="story-title" id="storyTitle">开端：清末码头兴起（1880-1911）</h2>
-            <p class="story-text" id="storyText">清末福州开埠，闽江沿岸依托水运兴起首批老码头，成为货物集散、百姓出行的核心枢纽。</p>
-            <img src="https://picsum.photos/id/1048/600/400" class="story-img" id="storyImg">
-            <div class="btn-group">
-                <button class="btn" onclick="prevChapter()">上一章</button>
-                <button class="btn" onclick="nextChapter()">下一章</button>
-            </div>
+    <canvas id="particle-canvas"></canvas>
+    <div id="map"></div>
+
+    <div id="story-panel">
+        <div class="chapter-badge" id="badge"></div>
+        <div class="story-title" id="title"></div>
+        <div class="story-subtitle" id="subtitle"></div>
+        <div class="story-text" id="text"></div>
+        <div id="extra"></div>
+
+        <div class="time-slider-container">
+            <div class="time-slider-label"><span>1985</span><span>现在</span></div>
+            <input type="range" id="timeSlider" min="0" max="5" value="0" step="1">
         </div>
-        <div id="map"></div>
+
+        <div class="progress-dots" id="dotsContainer"></div>
+
+        <div class="nav-row">
+            <button class="nav-btn" id="prevBtn"><i class="fa-solid fa-arrow-left"></i> 上一章</button>
+            <span class="page-indicator" id="pageNum">1/6</span>
+            <button class="nav-btn" id="nextBtn">下一章 <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+        <div class="nav-row" style="justify-content:center; margin-top:14px;">
+            <button class="nav-btn" id="autoPlayBtn"><i class="fa-solid fa-play"></i> 自动播放</button>
+        </div>
+    </div>
+
+    <div class="control-top">
+        <button class="ctrl-btn" id="toggleSoundBtn" title="环境音效"><i class="fa-solid fa-volume-high"></i></button>
+        <button class="ctrl-btn" id="fullscreenBtn" title="全屏地图"><i class="fa-solid fa-expand"></i></button>
+    </div>
+
+    <div id="basemap-panel">
+        <h4><i class="fa-solid fa-layer-group"></i> 切换底图</h4>
+        <label class="basemap-toggle"><input type="radio" name="basemap" value="satellite" checked> 卫星影像</label>
+        <label class="basemap-toggle"><input type="radio" name="basemap" value="dark"> 暗色过去</label>
+    </div>
+
+    <div class="legend-panel">
+        <div class="legend-item"><span class="legend-color" style="background:#c0392b;"></span> 矿区/水泥厂</div>
+        <div class="legend-item"><span class="legend-color" style="background:#27ae60;"></span> 生态竹林</div>
+        <div class="legend-item"><span class="legend-color" style="background:#2980b9;"></span> 旅游设施</div>
+        <div class="legend-item"><span class="legend-color" style="background:#f1c40f;"></span> 历史转折点</div>
+        <div class="legend-item"><span class="legend-color" style="background:#8e44ad;"></span> 水质监测</div>
+        <div class="legend-item"><span class="legend-color" style="background:#e67e22;"></span> 空气监测</div>
+    </div>
+
+    <div class="choice-modal" id="choiceModal">
+        <h3>🔎 关键抉择</h3>
+        <p style="margin-bottom:20px; color:#ccc;">你想先追查哪一条线索？</p>
+        <button class="choice-btn" data-choice="eco">🌿 探查如今的生态奇迹</button>
+        <button class="choice-btn" data-choice="detail">📜 了解2005年转折细节</button>
     </div>
 
     <script>
-        const map = L.map('map').setView([26.075, 119.305], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        const chapters = [
-            {
-                title: "开端：清末码头兴起（1880-1911）",
-                text: "清末福州开埠，闽江沿岸兴起首批老码头，地图俯瞰全流域码头分布格局。",
-                img: "https://picsum.photos/id/1048/600/400",
-                center: [26.075, 119.305], zoom: 13,
-                layerColor: "#8d6e63"
-            },
-            {
-                title: "发展：民国码头繁盛（1912-1949）",
-                text: "民国时期码头规模扩大，商贸鼎盛，地图漫游至台江核心码头群。",
-                img: "https://picsum.photos/id/1082/600/400",
-                center: [26.068, 119.312], zoom: 15,
-                layerColor: "#ffb74d"
-            },
-            {
-                title: "高潮：建国后码头转型（1950-2000）",
-                text: "陆路交通崛起，老码头逐渐荒废，地图放大至废弃码头点位。",
-                img: "https://picsum.photos/id/119/600/400",
-                center: [26.065, 119.315], zoom: 16,
-                layerColor: "#757575"
-            },
-            {
-                title: "结尾：新时代码头新生（2001-2025）",
-                text: "老码头改造为滨江文化公园，以新形式回归城市水岸。",
-                img: "https://picsum.photos/id/1036/600/400",
-                center: [26.075, 119.305], zoom: 13,
-                layerColor: "#66bb6a"
+        (function() {
+            function createIcon(iconClass, color, glow = false) {
+                return L.divIcon({
+                    className: '',
+                    html: `<div style="background:${color}; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; border:2px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5); ${glow ? 'box-shadow: 0 0 15px ' + color : ''}"><i class="fa-solid ${iconClass}" style="color:white; font-size:14px;"></i></div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14],
+                    popupAnchor: [0, -14]
+                });
             }
-        ];
 
-        let currentLayer = null;
-        let currentIndex = 0;
+            const map = L.map('map', {
+                center: [30.638, 119.682],
+                zoom: 15,
+                zoomControl: false,
+                attributionControl: false
+            });
 
-        function updateChapter(){
-            const c = chapters[currentIndex];
-            document.getElementById("storyTitle").innerText = c.title;
-            document.getElementById("storyText").innerText = c.text;
-            document.getElementById("storyImg").src = c.img;
-            map.flyTo(c.center, c.zoom, {duration:2});
-            
-            if(currentLayer) map.removeLayer(currentLayer);
-            currentLayer = L.layerGroup();
-            const points = [[26.066,119.310],[26.069,119.313],[26.072,119.308],[26.064,119.316],[26.070,119.305]];
-            points.forEach(p=>L.circleMarker(p,{color:c.layerColor,radius:7}).addTo(currentLayer));
-            currentLayer.addTo(map);
-        }
+            const basemaps = {
+                dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19,
+                    subdomains: 'abcd',
+                    attribution: '&copy; CartoDB'
+                }),
+                satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 18,
+                    attribution: '&copy; Esri'
+                })
+            };
 
-        function nextChapter(){currentIndex=(currentIndex+1)%chapters.length;updateChapter();}
-        function prevChapter(){currentIndex=(currentIndex-1+chapters.length)%chapters.length;updateChapter();}
-        updateChapter();
+            let currentBasemap = 'satellite';
+            basemaps[currentBasemap].addTo(map);
+
+            document.querySelectorAll('input[name="basemap"]').forEach(radio => {
+                radio.addEventListener('change', function(e) {
+                    const newBasemap = e.target.value;
+                    map.removeLayer(basemaps[currentBasemap]);
+                    basemaps[newBasemap].addTo(map);
+                    currentBasemap = newBasemap;
+                });
+            });
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            const mineArea = L.polygon([
+                [30.643,119.685],[30.645,119.690],[30.641,119.692],[30.639,119.688],[30.640,119.684]
+            ], { color:'#c0392b', fillColor:'#e74c3c', fillOpacity:0.3 }).bindPopup('⛏️ 石灰石矿区');
+            const cementPlant = L.marker([30.6395,119.6855], { icon: createIcon('fa-industry', '#c0392b') }).bindPopup('🏭 水泥厂');
+            const roadLine = L.polyline([[30.6395,119.6855],[30.641,119.687],[30.642,119.689]], { color:'#c0392b', weight:4, dashArray:'8,6' }).bindPopup('运输路');
+            const pastGroup = L.layerGroup([mineArea, cementPlant, roadLine]);
+
+            const bambooArea = L.polygon([[30.633,119.678],[30.637,119.675],[30.641,119.679],[30.639,119.683],[30.635,119.681]], { color:'#27ae60', fillColor:'#2ecc71', fillOpacity:0.25 }).bindPopup('🎋 生态竹林');
+            const parkArea = L.polygon([[30.642,119.686],[30.644,119.689],[30.641,119.691],[30.639,119.688]], { color:'#2980b9', fillColor:'#3498db', fillOpacity:0.25 }).bindPopup('🌿 矿山遗址公园');
+            const milestoneMarker = L.marker([30.637,119.683], { icon: createIcon('fa-star', '#f1c40f', true) }).bindPopup('<b>⭐ 2005.8.15</b><br>绿水青山就是金山银山');
+            const villageCenter = L.marker([30.635,119.682], { icon: createIcon('fa-building', '#f39c12') }).bindPopup('🏛️ 余村村委会');
+            const presentGroup = L.layerGroup([bambooArea, parkArea, milestoneMarker, villageCenter]);
+
+            const waterPoints = L.layerGroup([
+                L.marker([30.640,119.683], { icon: createIcon('fa-droplet', '#8e44ad') }).bindPopup('💧 西溪监测站 (水质Ⅱ类)'),
+                L.marker([30.633,119.680], { icon: createIcon('fa-droplet', '#8e44ad') }).bindPopup('💧 南溪监测站 (水质Ⅰ类)'),
+                L.marker([30.637,119.678], { icon: createIcon('fa-droplet', '#8e44ad') }).bindPopup('💧 天目溪监测站 (水质Ⅱ类)')
+            ]);
+
+            const airPoints = L.layerGroup([
+                L.marker([30.639,119.686], { icon: createIcon('fa-wind', '#e67e22') }).bindPopup('🌬 矿区空气站 (PM2.5 15μg/m³)'),
+                L.marker([30.636,119.679], { icon: createIcon('fa-wind', '#e67e22') }).bindPopup('🌬 竹林空气站 (PM2.5 8μg/m³)')
+            ]);
+
+            const farmstayGroup = L.layerGroup([
+                L.marker([30.637, 119.681], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 春林山庄'),
+                L.marker([30.6345, 119.682], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉巷屋里民宿'),
+                L.marker([30.635, 119.6805], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉庭仙农家'),
+                L.marker([30.6365, 119.683], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉缦居小院民宿'),
+                L.marker([30.6335, 119.684], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉大年初一度假村'),
+                L.marker([30.638, 119.6815], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 余村铁蛋窝农家乐'),
+                L.marker([30.634, 119.680], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉余村南屿民宿'),
+                L.marker([30.6375, 119.684], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 余村胡氏山庄客栈'),
+                L.marker([30.6355, 119.6828], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉七昊苑度假民宿'),
+                L.marker([30.6368, 119.6808], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉曼途听心山野亲子民宿'),
+                L.marker([30.6338, 119.6832], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉佳韵居民宿'),
+                L.marker([30.6372, 119.6835], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉山隐逸宿设计师民宿'),
+                L.marker([30.6342, 119.6818], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉栀夏民宿'),
+                L.marker([30.6362, 119.6845], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉相阑情舍民宿'),
+                L.marker([30.6358, 119.6795], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉余山林鹿民宿'),
+                L.marker([30.6348, 119.6838], { icon: createIcon('fa-store', '#f39c12') }).bindPopup('🏡 安吉吾庐民宿')
+            ]);
+
+            const restoreArea = L.polygon([[30.642,119.685],[30.645,119.688],[30.643,119.691],[30.640,119.689]], { color:'#2ecc71', fillColor:'#58d68d', fillOpacity:0.15, dashArray:'5,5' }).bindPopup('🌱 植被恢复示范区');
+
+            pastGroup.addTo(map);
+            presentGroup.addTo(map);
+            presentGroup.eachLayer(l => { if(l.setStyle) l.setStyle({opacity:0,fillOpacity:0}); if(l.setOpacity) l.setOpacity(0); });
+            waterPoints.addTo(map);
+            airPoints.addTo(map);
+            farmstayGroup.addTo(map);
+            restoreArea.addTo(map);
+
+            function setGroupVisibility(group) {
+                if (group === 'past') {
+                    pastGroup.eachLayer(l => { if(l.setStyle) l.setStyle({opacity:1,fillOpacity:0.3}); if(l.setOpacity) l.setOpacity(1); });
+                    presentGroup.eachLayer(l => { if(l.setStyle) l.setStyle({opacity:0,fillOpacity:0}); if(l.setOpacity) l.setOpacity(0); });
+                } else {
+                    pastGroup.eachLayer(l => { if(l.setStyle) l.setStyle({opacity:0,fillOpacity:0}); if(l.setOpacity) l.setOpacity(0); });
+                    presentGroup.eachLayer(l => { if(l.setStyle) l.setStyle({opacity:1,fillOpacity:0.25}); if(l.setOpacity) l.setOpacity(1); });
+                }
+            }
+
+            const chapters = [
+                { badge:'第一章·缘起', title:'竹海深处的答案', subtitle:'📍 1985年 · 安吉余村', text:'浙江天目山北麓，<span class="highlight">余村</span>隐于万顷竹海。毛竹是世代的生命线，山青水秀，仿佛时间在这里停滞。', image:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=340&fit=crop', cards:[{v:'800',l:'人口'},{v:'¥200',l:'人均年收入'}], center:[30.638,119.688], zoom:14, group:'past', sound:'bamboo' },
+                { badge:'第二章·裂变', title:'牛奶河的控诉', subtitle:'📍 1990-2003年 · 河流之殇', text:'发现<span class="highlight">石灰石</span>后，炸山开矿。溪水染成乳白，竹林成片枯死。村民患上怪病，曾经清澈的河流变成了毒流。', image:'https://ts1.tc.mm.bing.net/th/id/OIP-C.SZuiWZibwUZj-F2mpdsAmwHaE7?rs=1&pid=ImgDetMain&o=7&rm=3', cards:[{v:'300万',l:'村集体收入'},{v:'5%',l:'致病率'}], center:[30.641,119.688], zoom:16, group:'past', sound:'machine', clue:'河水重金属超标40倍，鱼虾绝迹。', fallbackImage:'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=600&h=340&fit=crop' },
+                { badge:'第三章·觉醒', title:'壮士断腕的抉择', subtitle:'📍 2003-2005年 · 工厂闭锁', text:'浙江启动“千万工程”。余村在争议中<span class="highlight">关停所有矿山和水泥厂</span>。收入骤降，但天空终于重现蓝色。', image:'https://vcg05.cfp.cn/creative/vcg/800/new/VCG41N2156134168.jpg', cards:[{v:'20万',l:'关停后收入'},{v:'0',l:'矿山复工'}], center:[30.639,119.685], zoom:17, group:'past', chart:'aqi', sound:'rain', triggerChoice:true, fallbackImage:'https://images.unsplash.com/photo-1581093588401-1f1e2ba4a9c5?w=600&h=340&fit=crop' },
+                { badge:'第四章·转折', title:'绿水青山之约', subtitle:'📍 2005年8月15日 · 历史时刻', text:'时任省委书记<span class="highlight">习近平</span>来到余村，首次提出<span class="highlight">“绿水青山就是金山银山”</span>，为迷茫中的中国乡村点亮明灯。', image:'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&h=340&fit=crop', cards:[{v:'2005',l:'转折年'},{v:'∞',l:'绿色希望'}], center:[30.637,119.683], zoom:18, group:'present', sound:'solemn', link:true },
+                { badge:'第五章·涅槃', title:'山水间的金山银山', subtitle:'📍 2010年至今 · 美丽经济', text:'矿山遗址变公园，竹林涌现60多家民宿。2023年旅游收入<span class="highlight">突破7500万</span>，人均收入超4万元。', image:'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=600&h=340&fit=crop', cards:[{v:'7500万',l:'年旅游收入'},{v:'4.2万',l:'人均收入(元)'}], center:[30.636,119.681], zoom:16, group:'present', sound:'lively' },
+                { badge:'终章·升华', title:'山河回响', subtitle:'📍 如今 · 从一村到全国', text:'余村的故事，是中国生态文明建设的缩影。<span class="highlight">“绿水青山就是金山银山”</span>已写入中央文件，成为全党全社会的共识。千千万万个村庄，正在绿水青山间，寻找属于自己的金山银山。', image:'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=340&fit=crop', cards:[{v:'70万',l:'推广村庄'},{v:'∞',l:'绿色未来'}], center:[30.636,119.681], zoom:14, group:'present', sound:'solemn' }
+            ];
+
+            const badgeEl = document.getElementById('badge');
+            const titleEl = document.getElementById('title');
+            const subtitleEl = document.getElementById('subtitle');
+            const textEl = document.getElementById('text');
+            const extraEl = document.getElementById('extra');
+            const dotsContainer = document.getElementById('dotsContainer');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const pageNumEl = document.getElementById('pageNum');
+            const autoPlayBtn = document.getElementById('autoPlayBtn');
+            const timeSlider = document.getElementById('timeSlider');
+            const choiceModal = document.getElementById('choiceModal');
+
+            let current = 0, chartInstance = null, autoPlayInterval = null, choiceMade = false;
+
+            function createDots(count) {
+                dotsContainer.innerHTML = '';
+                for (let i=0; i<count; i++) {
+                    const d = document.createElement('span');
+                    d.className = 'progress-dot'; d.dataset.index = i;
+                    d.addEventListener('click', ()=> switchTo(i));
+                    dotsContainer.appendChild(d);
+                }
+            }
+            createDots(chapters.length);
+
+            function renderChart(container) {
+                if (!container || chartInstance) return;
+                const canvas = document.createElement('div');
+                canvas.style.width='100%'; canvas.style.height='200px';
+                container.appendChild(canvas);
+                chartInstance = echarts.init(canvas);
+                chartInstance.setOption({
+                    backgroundColor: 'transparent',
+                    grid: { left:40, right:20, top:20, bottom:20 },
+                    xAxis: { data:['1990','1995','2000','2003','2005','2010','2015','2023'], axisLabel:{color:'#aaa'} },
+                    yAxis: { name:'AQI', nameTextStyle:{color:'#aaa'}, axisLabel:{color:'#aaa'} },
+                    series: [{
+                        type:'line', data:[60,140,180,210,90,45,35,28],
+                        smooth:true, lineStyle:{color:'#f1c40f',width:3}, itemStyle:{color:'#f1c40f'},
+                        animationDuration:2000, areaStyle:{color:'rgba(241,196,15,0.15)'}
+                    }]
+                });
+            }
+
+            function switchTo(index) {
+                if (index < 0 || index >= chapters.length) return;
+                current = index;
+                const ch = chapters[index];
+                badgeEl.textContent = ch.badge;
+                titleEl.textContent = ch.title;
+                subtitleEl.innerHTML = `<i class="fa-solid fa-calendar"></i> ${ch.subtitle}`;
+                textEl.innerHTML = ch.text + (ch.clue ? `<div class="clue-badge">${ch.clue}</div>` : '');
+                let content = '';
+                if (ch.image) {
+                    content += `<img class="story-image" src="${ch.image}" alt="" onerror="this.src='${ch.fallbackImage || 'https://picsum.photos/600/340'}'">`;
+                }
+                content += '<div class="data-cards">';
+                ch.cards.forEach(c => content += `<div class="data-card"><div class="value">${c.v}</div><div class="label">${c.l}</div></div>`);
+                content += '</div>';
+                if (ch.chart) content += '<div class="chart-box" id="chartBox"></div>';
+                if (ch.link) {
+                    content += `<div style="text-align:center; margin-top:12px;">
+                        <button class="nav-btn" onclick="window.open('https://baike.baidu.com/item/%E7%BB%BF%E6%B0%B4%E9%9D%92%E5%B1%B1%E5%B0%B1%E6%98%AF%E9%87%91%E5%B1%B1%E9%93%B6%E5%B1%B1','_blank')"><i class="fa-solid fa-newspaper"></i> 查看权威解读</button>
+                    </div>`;
+                }
+                extraEl.innerHTML = content;
+
+                if (ch.chart) setTimeout(() => renderChart(document.getElementById('chartBox')), 100);
+                else { if (chartInstance) { chartInstance.dispose(); chartInstance = null; } }
+
+                setGroupVisibility(ch.group);
+                map.flyTo(ch.center, ch.zoom, { duration:1.8 });
+                setParticleMode(ch.sound || 'none');
+
+                const dots = document.querySelectorAll('.progress-dot');
+                dots.forEach(d => d.classList.remove('active'));
+                if (dots[index]) dots[index].classList.add('active');
+                pageNumEl.textContent = `${index+1}/${chapters.length}`;
+                prevBtn.disabled = index === 0;
+                nextBtn.disabled = index === chapters.length - 1;
+                timeSlider.value = index;
+
+                if (index === 1) setTimeout(() => cementPlant.openPopup(), 1800);
+                if (index === 3) setTimeout(() => milestoneMarker.openPopup(), 1800);
+
+                if (ch.triggerChoice && !choiceMade) {
+                    choiceModal.style.display = 'block';
+                    if (autoPlayInterval) { clearInterval(autoPlayInterval); autoPlayInterval=null; autoPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> 自动播放'; }
+                } else {
+                    choiceModal.style.display = 'none';
+                }
+
+                gsap.fromTo('#story-panel', { opacity:0.8, scale:0.98 }, { opacity:1, scale:1, duration:0.4 });
+                if (soundEnabled) playAmbient(ch.sound);
+            }
+
+            document.querySelectorAll('.choice-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    choiceMade = true;
+                    choiceModal.style.display = 'none';
+                    const choice = this.dataset.choice;
+                    if (choice === 'eco') switchTo(4);
+                    else if (choice === 'detail') switchTo(3);
+                });
+            });
+
+            prevBtn.addEventListener('click', ()=>{ if(current>0) switchTo(current-1); });
+            nextBtn.addEventListener('click', ()=>{ if(current<chapters.length-1) switchTo(current+1); });
+            timeSlider.addEventListener('input', e => switchTo(parseInt(e.target.value)));
+
+            autoPlayBtn.addEventListener('click', ()=>{
+                if (autoPlayInterval) {
+                    clearInterval(autoPlayInterval); autoPlayInterval=null;
+                    autoPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> 自动播放';
+                } else {
+                    autoPlayInterval = setInterval(() => {
+                        if (current < chapters.length-1) switchTo(current+1);
+                        else { clearInterval(autoPlayInterval); autoPlayInterval=null; autoPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> 自动播放'; }
+                    }, 5000);
+                    autoPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i> 暂停';
+                }
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key==='ArrowRight') { e.preventDefault(); if(current<chapters.length-1) switchTo(current+1); }
+                if (e.key==='ArrowLeft') { e.preventDefault(); if(current>0) switchTo(current-1); }
+            });
+
+            document.getElementById('fullscreenBtn').addEventListener('click', ()=>{
+                document.body.classList.toggle('hide-panel');
+            });
+
+            const canvas = document.getElementById('particle-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [], particleMode = 'none';
+            function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            function spawnParticle(pos) {
+                if (particleMode === 'bamboo') return null;
+                if (particleMode === 'machine') return { x:pos.x, y:pos.y, vx:(Math.random()-0.5)*2.5, vy:(Math.random()-0.5)*1.5-1.2, life:1, size:Math.random()*5+2, color:'rgba(150,150,150,0.9)' };
+                if (particleMode === 'rain') return { x:pos.x+(Math.random()-0.5)*80, y:pos.y-20, vx:0, vy:Math.random()*4+3, life:0.5, size:1, color:'rgba(52,152,219,0.6)' };
+                if (particleMode === 'solemn') return { x:pos.x, y:pos.y, vx:(Math.random()-0.5)*1, vy:(Math.random()-0.5)*1.2-0.8, life:1, size:Math.random()*3+1.5, color:'rgba(241,196,15,0.9)' };
+                if (particleMode === 'lively') return { x:pos.x, y:pos.y, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*2-0.5, life:1, size:Math.random()*6+2, color:'rgba(46,204,113,0.8)' };
+                return null;
+            }
+
+            function updateParticles() {
+                if (particleMode === 'none' || particleMode === 'bamboo') { particles = []; ctx.clearRect(0,0,canvas.width,canvas.height); requestAnimationFrame(updateParticles); return; }
+                const pos = map.latLngToContainerPoint([30.641,119.688]);
+                if (particles.length < 70) for (let i=0;i<5;i++) { const p = spawnParticle(pos); if(p) particles.push(p); }
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                particles = particles.filter(p => p.life > 0);
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy; p.life -= 0.012;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                    ctx.fillStyle = p.color.replace(/[\d.]+\)$/g, `${p.life})`);
+                    ctx.fill();
+                });
+                requestAnimationFrame(updateParticles);
+            }
+            function setParticleMode(mode) { particleMode = mode; particles = []; }
+            updateParticles();
+
+            let audioCtx = null, soundEnabled = false, activeSound = null;
+            document.getElementById('toggleSoundBtn').addEventListener('click', async ()=>{
+                soundEnabled = !soundEnabled;
+                document.getElementById('toggleSoundBtn').classList.toggle('active', soundEnabled);
+                if (soundEnabled) {
+                    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (audioCtx.state === 'suspended') await audioCtx.resume();
+                    playAmbient(chapters[current].sound);
+                } else stopAmbient();
+            });
+
+            function playAmbient(type) {
+                stopAmbient();
+                if (!audioCtx) return;
+                const gain = audioCtx.createGain(); gain.gain.value = 0.3; gain.connect(audioCtx.destination);
+                if (type === 'bamboo') {
+                    const sn = audioCtx.createScriptProcessor(4096,1,1);
+                    sn.onaudioprocess = e => { const out = e.outputBuffer.getChannelData(0); for (let i=0;i<4096;i++) out[i] = (Math.random()*2-1)*0.015 + Math.sin(Date.now()/300 + i*0.01)*0.02; };
+                    sn.connect(gain); activeSound = sn;
+                } else if (type === 'machine') {
+                    const osc = audioCtx.createOscillator(); osc.type='sawtooth'; osc.frequency.value=50;
+                    const gn = audioCtx.createGain(); gn.gain.value=0.2; osc.connect(gn).connect(gain); osc.start();
+                    activeSound = osc;
+                } else if (type === 'rain') {
+                    const sn = audioCtx.createScriptProcessor(4096,1,1);
+                    sn.onaudioprocess = e => { const out = e.outputBuffer.getChannelData(0); for (let i=0;i<4096;i++) out[i] = (Math.random()*2-1)*0.08; };
+                    sn.connect(gain); activeSound = sn;
+                } else if (type === 'solemn') {
+                    const osc = audioCtx.createOscillator(); osc.type='sine'; osc.frequency.value=120;
+                    const gn = audioCtx.createGain(); gn.gain.value=0.1; osc.connect(gn).connect(gain); osc.start();
+                    activeSound = osc;
+                } else if (type === 'lively') {
+                    const sn = audioCtx.createScriptProcessor(4096,1,1);
+                    sn.onaudioprocess = e => { const out = e.outputBuffer.getChannelData(0); for (let i=0;i<4096;i++) out[i] = (Math.random()*2-1)*0.02 + Math.sin(Date.now()/200 + i*0.02)*0.03; };
+                    sn.connect(gain); activeSound = sn;
+                }
+            }
+            function stopAmbient() { if (activeSound) { if (activeSound.stop) activeSound.stop(); else activeSound.disconnect(); activeSound = null; } }
+
+            switchTo(0);
+        })();
     </script>
 </body>
 </html>
